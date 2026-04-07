@@ -150,7 +150,6 @@ This project follows app-level 12-factor principles:
 -  **Logs to stdout** - All logs written to console
 -  **Dev/prod parity** - Same start commands and behavior
 
-Intentionally excludes infrastructure-heavy factors (Docker, orchestration, CI/CD).
 
 ## Running the Full Stack
 
