@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:4.4
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: backend-api
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override with Docker service name instead of localhost
+      - MONGODB_URI=mongodb://mongo:27017/my-courses-app
+      # Frontend is served on port 80 in Docker and exposed on host port 8080
+      - CORS_ORIGIN=http://localhost:8080
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Frontend (React + Nginx)
+  frontend:
+    build: ./frontend
+    container_name: frontend-app
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+
+networks:
+  app-network:
+    driver: bridge
