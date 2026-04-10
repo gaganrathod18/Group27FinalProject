@@ -1,7 +1,10 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { getRequiredEnv, getEnv } from '../config/env.js';
+
+const googleClient = new OAuth2Client();
 
 function createToken(user) {
   return jwt.sign({ userId: user._id, username: user.username, role: user.role }, getRequiredEnv('JWT_SECRET'), {
@@ -82,22 +85,23 @@ async function login(req, res, next) {
 
 async function googleLogin(req, res, next) {
   try {
-    const { token, role } = req.body;
+    const { credential, role } = req.body;
 
-    if (!token) {
-      return res.status(400).json({ message: 'Google token is required' });
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential is required' });
     }
 
-    // Validate the access token by calling Google's userinfo endpoint
-    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${token}` },
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: getRequiredEnv('GOOGLE_CLIENT_ID'),
     });
+    const payload = ticket.getPayload();
 
-    if (!googleRes.ok) {
-      return res.status(401).json({ message: 'Invalid Google token' });
+    if (!payload?.sub || !payload.email) {
+      return res.status(401).json({ message: 'Invalid Google credential' });
     }
 
-    const { sub: googleId, email, name } = await googleRes.json();
+    const { sub: googleId, email, name } = payload;
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] });
 

@@ -7,9 +7,28 @@ import courseRoutes from './routes/courseRoutes.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
-const corsOrigin = getEnv('CORS_ORIGIN', 'http://localhost:5173');
 
-app.use(cors({ origin: corsOrigin }));
+const allowedOrigins = [
+  getEnv('CORS_ORIGIN', 'http://localhost:5173'),
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://host.docker.internal:5173',
+  'http://host.docker.internal:3000',
+].filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(morgan('dev'));
 

@@ -1,20 +1,14 @@
-# Use official Node.js image
-FROM node:18
+FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files first
 COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Install dependencies
-RUN npm install
-
-# Copy all backend files
 COPY . .
 
-# Expose backend port
+ENV NODE_ENV=production
+
 EXPOSE 5000
 
-# Start backend
 CMD ["npm", "start"]
