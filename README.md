@@ -1,179 +1,359 @@
 # My Courses App
 
-A full-stack course management application with role-based access for faculty and students. Faculty members can create and manage courses, while students can browse and enroll in courses.
+A full-stack course management application with role-based access for faculty and students. Faculty can create and manage courses, while students can browse, enroll, and unenroll from courses.
+
+## Tech Stack
+
+- Frontend: React, Vite, Material UI, Google Identity Services
+- Backend: Node.js, Express, MongoDB, Mongoose, JWT
+- Infrastructure: Docker, Docker Compose, Nginx
 
 ## Features
 
-- **Faculty Features**
-  - Create, edit, and delete their own courses
-  - Manage course enrollment status (Open, Closed, Waitlist)
-  - View all courses they've created
+- Faculty registration and login
+- Student registration and login
+- Google sign-in for faculty and students
+- JWT authentication
+- Role-based route protection
+- Faculty course create, update, delete, and listing
+- Student course browsing, enrollment, and unenrollment
+- Dockerized frontend, backend, and MongoDB services
 
-- **Student Features**
-  - Browse all available courses
-  - Enroll in multiple courses (limited to courses with "Open" status)
-  - View current enrollments
-  - Unenroll from courses
-  - Filter courses by semester.
+## Project Structure
 
-- **Authentication**
-  - Separate registration and login for Faculty and Students
-  - JWT token-based authentication
-  - Role-based access control
+```text
+backend/    Express API, MongoDB models, auth, course routes
+frontend/   React/Vite UI served by Nginx in Docker
+docker-compose.yml
+```
 
-- **Modern UI**
-  - Material UI components
-  - Responsive design
-  - Role-specific dashboards
-  - Tab-based navigation for students
+## Environment Files
 
-## Architecture
+Create these files before running the app.
 
-- `backend/` - Express.js + MongoDB API
-- `frontend/` - React + Vite UI
-
-## Database Models
-
-### User
-- username (unique)
-- passwordHash
-- role (faculty/student)
-- timestamps
-
-### Course
-- title
-- details
-- semester
-- enrollStatus (Open, Closed, Waitlist)
-- faculty (reference to User)
-- timestamps
-
-### Enrollment
-- student (reference to User)
-- course (reference to Course)
-- timestamps
-
-## Backend Setup
-
-### Environment Variables
-
-Copy `backend/.env.example` to `backend/.env`:
+### `backend/.env`
 
 ```env
 PORT=5000
-MONGODB_URI=use-your-uri
-JWT_SECRET=your-secret-key
+MONGODB_URI=mongodb://mongo:27017/vcc_project
+JWT_SECRET=change-this-secret
 JWT_EXPIRES_IN=1h
+CORS_ORIGIN=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+```
+
+For local backend development outside Docker, use a local MongoDB URI instead:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/vcc_project
 CORS_ORIGIN=http://localhost:5173
-GOOGLE_CLIENT_ID=__
 ```
 
-### Installation & Running
+### `frontend/.env`
 
-From `backend/`:
-
-```bash
-npm install
-npm run dev  # development with nodemon
-npm start    # production
+```env
+VITE_API_BASE_URL=/api
+VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
 ```
 
-## Frontend Setup
-
-### Environment Variables
-
-Create `frontend/.env`:
+For local Vite development without Docker, use:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000
-GOOGLE_CLIENT_ID=__
 ```
 
-### Installation & Running
+Important: `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID` must be the same Google OAuth Web Client ID.
 
-From `frontend/`:
+## Run With Docker Compose
+
+From the project root:
 
 ```bash
+docker compose up --build -d
+```
+
+Check service status:
+
+```bash
+docker compose ps
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop services:
+
+```bash
+docker compose down
+```
+
+Local Docker URLs:
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5000`
+- Backend health: `http://localhost:5000/health`
+- MongoDB: `mongodb://localhost:27017`
+
+In Docker, the frontend calls the backend through Nginx using `/api`, which proxies to `backend:5000`.
+
+## Run Without Docker
+
+Backend:
+
+```bash
+cd backend
 npm install
-npm run dev  # Vite dev server (http://localhost:5173)
-npm run build
-npm run preview
+npm run dev
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run start
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+## Google OAuth Setup
+
+Create a Google OAuth Client ID in Google Cloud Console:
+
+1. Go to `APIs & Services` -> `Credentials`
+2. Create `OAuth client ID`
+3. Choose application type `Web application`
+4. Copy the generated Client ID into both `backend/.env` and `frontend/.env`
+
+### Local Authorized JavaScript Origins
+
+Add these for local Docker and local Vite development:
+
+```text
+http://localhost:3000
+http://127.0.0.1:3000
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+### Local Authorized Redirect URIs
+
+This app currently uses Google Identity Services ID-token sign-in, so it does not require a custom callback route. If Google Console requires redirect URIs or you see `redirect_uri_mismatch`, add:
+
+```text
+http://localhost:3000
+http://127.0.0.1:3000
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+### Cloud Deployment OAuth Changes
+
+When deploying to a real domain, add your production frontend domain to Google OAuth.
+
+Example production frontend:
+
+```text
+https://my-courses.example.com
+```
+
+Authorized JavaScript origins:
+
+```text
+https://my-courses.example.com
+```
+
+Authorized redirect URIs:
+
+```text
+https://my-courses.example.com
+```
+
+If your frontend is hosted on a platform URL such as Vercel, Netlify, Render, Railway, or a custom domain, add the exact browser URL users open. The scheme and host must match exactly, including `https`.
+
+Examples:
+
+```text
+https://my-courses.vercel.app
+https://my-courses.netlify.app
+https://my-courses.example.com
+```
+
+Do not add backend API URLs as JavaScript origins unless the browser directly opens the backend domain for Google sign-in.
+
+## CORS Notes For Cloud Deployment
+
+The backend uses `CORS_ORIGIN` to allow browser requests from the frontend.
+
+Local Docker:
+
+```env
+CORS_ORIGIN=http://localhost:3000
+```
+
+Local Vite:
+
+```env
+CORS_ORIGIN=http://localhost:5173
+```
+
+Cloud deployment:
+
+```env
+CORS_ORIGIN=https://your-frontend-domain.com
+```
+
+Examples:
+
+```env
+CORS_ORIGIN=https://my-courses.vercel.app
+CORS_ORIGIN=https://my-courses.netlify.app
+CORS_ORIGIN=https://my-courses.example.com
+```
+
+If frontend and backend are deployed on different domains, `CORS_ORIGIN` must be the frontend domain, not the backend domain.
+
+If frontend and backend are served under the same domain through a reverse proxy, for example:
+
+```text
+https://my-courses.example.com
+https://my-courses.example.com/api
+```
+
+then set:
+
+```env
+VITE_API_BASE_URL=/api
+CORS_ORIGIN=https://my-courses.example.com
+```
+
+If the frontend calls a separate backend URL, for example:
+
+```text
+Frontend: https://my-courses.example.com
+Backend:  https://api.my-courses.example.com
+```
+
+then set:
+
+```env
+VITE_API_BASE_URL=https://api.my-courses.example.com
+CORS_ORIGIN=https://my-courses.example.com
 ```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /auth/register` - Register (requires `username`, `password`, `role`)
-- `POST /auth/login` - Login (returns JWT token and user info)
 
-### Courses (Both roles)
-- `GET /courses` - List all courses
-- `GET /course/:id` or `/course?id=...` - Get course details
+- `POST /auth/register` - register with `username`, `password`, and `role`
+- `POST /auth/login` - login with `username` and `password`
+- `POST /auth/google` - login/register using Google ID credential and `role`
+
+### Courses
+
+- `GET /courses` - list all courses
+- `GET /course/:id` - get course details
+- `GET /course?id=...` - get course details by query parameter
 
 ### Faculty Only
-- `POST /course` - Create a course
-- `PUT /course/:id` - Update own course
-- `DELETE /course/:id` - Delete own course
-- `GET /faculty/courses` - Get faculty's courses
+
+- `POST /course` - create a course
+- `PUT /course/:id` - update own course
+- `DELETE /course/:id` - delete own course
+- `GET /faculty/courses` - list faculty-owned courses
 
 ### Student Only
-- `POST /enroll` - Enroll in a course (requires `courseId`)
-- `GET /enrollments` - Get student's enrollments
-- `DELETE /enrollment/:enrollmentId` - Unenroll from a course
 
-All protected endpoints require Bearer token in Authorization header:
-```
+- `POST /enroll` - enroll in a course with `courseId`
+- `GET /enrollments` - list current student's enrollments
+- `DELETE /enrollment/:enrollmentId` - unenroll from a course
+
+Protected endpoints require:
+
+```http
 Authorization: Bearer <token>
 ```
 
-## User Flows
+## Common Google OAuth Errors
 
-### Faculty Registration & Login
-1. Navigate to `/` (Landing Page)
-2. Click "Faculty" → Register or Login
-3. Access Faculty Dashboard at `/faculty/dashboard`
-4. Create, edit, or delete courses
-5. View all courses you've created
+### `origin_mismatch`
 
-### Student Registration & Login
-1. Navigate to `/` (Landing Page)
-2. Click "Student" → Register or Login
-3. Access Student Dashboard at `/student/dashboard`
-4. **Available Courses Tab**: Browse and enroll in courses
-5. **My Enrollments Tab**: View, manage, and unenroll from courses
+The browser origin is missing from `Authorized JavaScript origins`.
 
-## 12-Factor App Compliance
+Fix: add the exact URL you use in the browser, such as:
 
-This project follows app-level 12-factor principles:
-
--  **Config in env** - All runtime config via environment variables
--  **Dependencies** - Explicit in package.json  
--  **Stateless processes** - Backend API is stateless, JWT for auth
--  **Logs to stdout** - All logs written to console
--  **Dev/prod parity** - Same start commands and behavior
-
-
-## Running the Full Stack
-
-### Terminal 1 - Backend
-```bash
-cd backend
-npm run dev
+```text
+http://localhost:3000
 ```
 
-### Terminal 2 - Frontend
+### `redirect_uri_mismatch`
+
+The OAuth client is not configured for the redirect/origin Google is using, or the wrong Client ID is being served.
+
+Fix:
+
+- Confirm the OAuth client type is `Web application`
+- Confirm the Client ID in `frontend/.env` and `backend/.env` matches Google Console
+- Add the local or production frontend URL to `Authorized JavaScript origins`
+- Add the same URL to `Authorized redirect URIs` if Google still requires it
+- Rebuild the frontend after changing env values:
+
 ```bash
-cd frontend
-npm run dev
+docker compose down
+docker compose up --build -d
 ```
 
-Then open http://localhost:5173 in your browser.
+### Google button says client ID is missing
 
-## Demo Data
+Make sure `frontend/.env` contains:
 
-To add demo courses:
+```env
+VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+```
+
+Then rebuild:
+
+```bash
+docker compose up --build -d
+```
+
+## Database Models
+
+### User
+
+- `username`
+- `email`
+- `googleId`
+- `passwordHash`
+- `role`
+- `timestamps`
+
+### Course
+
+- `title`
+- `details`
+- `semester`
+- `enrollStatus`
+- `faculty`
+- `timestamps`
+
+### Enrollment
+
+- `student`
+- `course`
+- `timestamps`
+
+## Demo Flow
+
 1. Register as faculty
-2. Create a few test courses with different semesters and statuses
+2. Create courses
 3. Register as student
-4. Browse and enroll in the created courses
-
+4. Browse available courses
+5. Enroll and unenroll from courses
