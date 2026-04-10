@@ -14,7 +14,7 @@ A full-stack course management application with role-based access for faculty an
   - Enroll in multiple courses (limited to courses with "Open" status)
   - View current enrollments
   - Unenroll from courses
-  - Filter courses by semester
+  - Filter courses by semester.
 
 - **Authentication**
   - Separate registration and login for Faculty and Students
