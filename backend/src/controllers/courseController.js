@@ -36,7 +36,7 @@ async function getCourse(req, res, next) {
 
 async function createCourse(req, res, next) {
   try {
-    const { title, details, semester, enrollStatus } = req.body;
+    const { title, details, semester, enrollStatus, description, syllabus } = req.body;
 
     if (!title || !details || !semester) {
       return res.status(400).json({ message: 'Title, details, and semester are required' });
@@ -47,6 +47,8 @@ async function createCourse(req, res, next) {
       details,
       semester,
       enrollStatus: enrollStatus || 'Open',
+      description,
+      syllabus,
       faculty: req.user.userId,
     });
 
@@ -189,6 +191,33 @@ async function getFacultyCourses(req, res, next) {
   }
 }
 
+async function addAnnouncement(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ message: 'Announcement content is required' });
+    }
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (course.faculty.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Only the faculty of this course can add announcements' });
+    }
+
+    course.announcements.push({ content });
+    await course.save();
+
+    return res.status(201).json(course);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export {
   listCourses,
   getCourse,
@@ -199,4 +228,5 @@ export {
   getStudentEnrollments,
   unenrollCourse,
   getFacultyCourses,
+  addAnnouncement,
 };

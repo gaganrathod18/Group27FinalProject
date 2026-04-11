@@ -29,6 +29,20 @@ const courseSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    description: {
+      type: String,
+      trim: true,
+    },
+    syllabus: {
+      type: String,
+      trim: true,
+    },
+    announcements: [
+      {
+        content: String,
+        date: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

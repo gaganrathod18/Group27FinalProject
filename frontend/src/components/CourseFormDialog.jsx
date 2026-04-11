@@ -18,6 +18,8 @@ const initialState = {
   details: '',
   semester: '',
   enrollStatus: 'Open',
+  description: '',
+  syllabus: '',
 };
 
 export default function CourseFormDialog({ open, onClose, onSave, course }) {
@@ -30,6 +32,8 @@ export default function CourseFormDialog({ open, onClose, onSave, course }) {
         details: course.details || '',
         semester: course.semester || '',
         enrollStatus: course.enrollStatus || 'Open',
+        description: course.description || '',
+        syllabus: course.syllabus || '',
       });
     } else {
       setForm(initialState);
@@ -69,6 +73,24 @@ export default function CourseFormDialog({ open, onClose, onSave, course }) {
               onChange={(event) => setForm({ ...form, semester: event.target.value })}
               fullWidth
               required
+            />
+            <TextField
+              label="Short Description"
+              placeholder="A brief overview of the course"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+            <TextField
+              label="Syllabus"
+              placeholder="Enter course syllabus, topics, and schedule..."
+              value={form.syllabus}
+              onChange={(event) => setForm({ ...form, syllabus: event.target.value })}
+              fullWidth
+              multiline
+              minRows={5}
             />
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>

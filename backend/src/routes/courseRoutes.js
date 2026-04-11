@@ -11,6 +11,7 @@ import {
   getStudentEnrollments,
   unenrollCourse,
   getFacultyCourses,
+  addAnnouncement,
 } from '../controllers/courseController.js';
 
 const router = express.Router();
@@ -26,6 +27,7 @@ router.post('/course', checkRole(['faculty']), createCourse);
 router.put('/course/:id', checkRole(['faculty']), updateCourse);
 router.delete('/course/:id', checkRole(['faculty']), deleteCourse);
 router.get('/faculty/courses', checkRole(['faculty']), getFacultyCourses);
+router.post('/course/:id/announcement', checkRole(['faculty']), addAnnouncement);
 
 // Student-only endpoints
 router.post('/enroll', checkRole(['student']), enrollCourse);

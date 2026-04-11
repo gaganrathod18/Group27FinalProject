@@ -15,7 +15,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-export default function CourseTable({ courses, onEdit, onDelete }) {
+export default function CourseTable({ courses, onEdit, onDelete, onView }) {
   if (!courses.length) {
     return (
       <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -39,7 +39,12 @@ export default function CourseTable({ courses, onEdit, onDelete }) {
         </TableHead>
         <TableBody>
           {courses.map((course) => (
-            <TableRow key={course._id} hover>
+            <TableRow 
+              key={course._id} 
+              hover 
+              sx={{ cursor: 'pointer' }}
+              onClick={() => onView(course)}
+            >
               <TableCell>
                 <Typography fontWeight={700}>{course.title}</Typography>
               </TableCell>
@@ -56,12 +61,18 @@ export default function CourseTable({ courses, onEdit, onDelete }) {
               </TableCell>
               <TableCell align="right">
                 <Tooltip title="Edit">
-                  <IconButton onClick={() => onEdit(course)}>
+                  <IconButton onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(course);
+                  }}>
                     <EditIcon />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Delete">
-                  <IconButton color="error" onClick={() => onDelete(course)}>
+                  <IconButton color="error" onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(course);
+                  }}>
                     <DeleteIcon />
                   </IconButton>
                 </Tooltip>

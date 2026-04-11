@@ -21,6 +21,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CourseFormDialog from '../components/CourseFormDialog';
 import CourseTable from '../components/CourseTable';
+import CourseContentDialog from '../components/CourseContentDialog';
 
 export default function FacultyDashboard() {
   const { user, logout } = useAuth();
@@ -30,6 +31,7 @@ export default function FacultyDashboard() {
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [viewCourse, setViewCourse] = useState(null);
 
   async function loadCourses() {
     setLoading(true);
@@ -119,9 +121,22 @@ export default function FacultyDashboard() {
           {error ? <Alert severity="error">{error}</Alert> : null}
           {loading ? <Alert severity="info">Loading courses...</Alert> : null}
 
-          {!loading ? <CourseTable courses={courses} onEdit={handleEdit} onDelete={setDeleteTarget} /> : null}
+          {!loading ? (
+            <CourseTable 
+              courses={courses} 
+              onEdit={handleEdit} 
+              onDelete={setDeleteTarget} 
+              onView={setViewCourse} 
+            />
+          ) : null}
         </Stack>
       </Container>
+
+      <CourseContentDialog 
+        open={Boolean(viewCourse)} 
+        onClose={() => setViewCourse(null)} 
+        course={viewCourse} 
+      />
 
       <CourseFormDialog
         open={formOpen}

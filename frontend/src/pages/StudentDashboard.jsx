@@ -11,19 +11,27 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Tab,
   Tabs,
+  TextField,
   Toolbar,
   Typography,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EnrollIcon from '@mui/icons-material/Login';
+import SearchIcon from '@mui/icons-material/Search';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import CourseContentDialog from '../components/CourseContentDialog';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -34,7 +42,7 @@ function TabPanel(props) {
   );
 }
 
-function CourseGrid({ courses, onEnroll }) {
+function CourseGrid({ courses, onEnroll, enrollments = [], onView }) {
   if (!courses.length) {
     return (
       <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -45,8 +53,22 @@ function CourseGrid({ courses, onEnroll }) {
 
   return (
     <Stack spacing={2}>
-      {courses.map((course) => (
-        <Paper key={course._id} sx={{ p: 2 }}>
+      {courses.map((course) => {
+        const isEnrolled = enrollments.some((e) => (e.course?._id || e.course) === course._id);
+        return (
+        <Paper 
+          key={course._id} 
+          sx={{ 
+            p: 2, 
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: 4,
+            }
+          }}
+          onClick={() => onView(course)}
+        >
           <Stack direction="row" justifyContent="space-between" alignItems="start">
             <Stack spacing={1} sx={{ flex: 1 }}>
               <Typography variant="h6" fontWeight={700}>
@@ -68,23 +90,38 @@ function CourseGrid({ courses, onEnroll }) {
                 )}
               </Stack>
             </Stack>
-            <Button
-              startIcon={<EnrollIcon />}
-              variant="contained"
-              size="small"
-              onClick={() => onEnroll(course)}
-              disabled={course.enrollStatus !== 'Open'}
-            >
-              Enroll
-            </Button>
+            {isEnrolled ? (
+              <Button
+                variant="contained"
+                size="small"
+                disabled
+                onClick={(e) => e.stopPropagation()}
+              >
+                Enrolled
+              </Button>
+            ) : (
+              <Button
+                startIcon={<EnrollIcon />}
+                variant="contained"
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEnroll(course);
+                }}
+                disabled={course.enrollStatus !== 'Open'}
+              >
+                Enroll
+              </Button>
+            )}
           </Stack>
         </Paper>
-      ))}
+      );
+      })}
     </Stack>
   );
 }
 
-function EnrolledCourses({ enrollments, onUnenroll }) {
+function EnrolledCourses({ enrollments, onUnenroll, onView }) {
   if (!enrollments.length) {
     return (
       <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -99,7 +136,19 @@ function EnrolledCourses({ enrollments, onUnenroll }) {
   return (
     <Stack spacing={2}>
       {enrollments.map((enrollment) => (
-        <Paper key={enrollment._id} sx={{ p: 2 }}>
+        <Paper 
+          key={enrollment._id} 
+          sx={{ 
+            p: 2,
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: 4,
+            }
+          }}
+          onClick={() => onView(enrollment.course)}
+        >
           <Stack direction="row" justifyContent="space-between" alignItems="start">
             <Stack spacing={1} sx={{ flex: 1 }}>
               <Typography variant="h6" fontWeight={700}>
@@ -121,7 +170,14 @@ function EnrolledCourses({ enrollments, onUnenroll }) {
                 )}
               </Stack>
             </Stack>
-            <IconButton color="error" onClick={() => onUnenroll(enrollment)} title="Unenroll">
+            <IconButton 
+              color="error" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnenroll(enrollment);
+              }} 
+              title="Unenroll"
+            >
               <DeleteIcon />
             </IconButton>
           </Stack>
@@ -136,10 +192,49 @@ export default function StudentDashboard() {
   const [tabIndex, setTabIndex] = useState(0);
   const [allCourses, setAllCourses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterSemester, setFilterSemester] = useState('All');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [sortOption, setSortOption] = useState('alpha-asc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enrollDialog, setEnrollDialog] = useState(null);
   const [unenrollTarget, setUnenrollTarget] = useState(null);
+  const [viewCourse, setViewCourse] = useState(null);
+
+  const uniqueSemesters = ['All', ...new Set(allCourses.map((c) => c.semester))].filter(Boolean);
+
+  const processCourses = (coursesArr, isEnrollment = false) => {
+    let result = coursesArr.filter((item) => {
+      const courseObj = isEnrollment ? item.course : item;
+      if (!courseObj) return false;
+
+      const matchesSearch =
+        courseObj.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        courseObj.details?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesSemester = filterSemester === 'All' || courseObj.semester === filterSemester;
+      const matchesStatus = filterStatus === 'All' || courseObj.enrollStatus === filterStatus;
+
+      return matchesSearch && matchesSemester && matchesStatus;
+    });
+
+    result.sort((a, b) => {
+      const courseA = isEnrollment ? a.course : a;
+      const courseB = isEnrollment ? b.course : b;
+      
+      if (sortOption === 'alpha-asc') return (courseA?.title || '').localeCompare(courseB?.title || '');
+      if (sortOption === 'alpha-desc') return (courseB?.title || '').localeCompare(courseA?.title || '');
+      if (sortOption === 'sem-asc') return (courseA?.semester || '').localeCompare(courseB?.semester || '');
+      if (sortOption === 'sem-desc') return (courseB?.semester || '').localeCompare(courseA?.semester || '');
+      return 0;
+    });
+
+    return result;
+  };
+
+  const filteredAllCourses = processCourses(allCourses, false);
+  const filteredEnrollments = processCourses(enrollments, true);
 
   async function loadCourses() {
     setLoading(true);
@@ -222,22 +317,95 @@ export default function StudentDashboard() {
 
           {!loading && (
             <Paper sx={{ width: '100%' }}>
-              <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
-                <Tab label={`Available Courses (${allCourses.length})`} />
-                <Tab label={`My Enrollments (${enrollments.length})`} />
-              </Tabs>
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', p: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                  <Tabs value={tabIndex} onChange={(e, newValue) => setTabIndex(newValue)}>
+                    <Tab label={`Available Courses (${allCourses.length})`} />
+                    <Tab label={`My Enrollments (${enrollments.length})`} />
+                  </Tabs>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    placeholder="Search courses..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ flexGrow: 1, minWidth: 200 }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                    <InputLabel>Semester</InputLabel>
+                    <Select
+                      value={filterSemester}
+                      label="Semester"
+                      onChange={(e) => setFilterSemester(e.target.value)}
+                    >
+                      {uniqueSemesters.map(sem => (
+                        <MenuItem key={sem} value={sem}>{sem}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={filterStatus}
+                      label="Status"
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                      <MenuItem value="All">All Statuses</MenuItem>
+                      <MenuItem value="Open">Open</MenuItem>
+                      <MenuItem value="Waitlist">Waitlist</MenuItem>
+                      <MenuItem value="Closed">Closed</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Sort By</InputLabel>
+                    <Select
+                      value={sortOption}
+                      label="Sort By"
+                      onChange={(e) => setSortOption(e.target.value)}
+                    >
+                      <MenuItem value="alpha-asc">Title (A-Z)</MenuItem>
+                      <MenuItem value="alpha-desc">Title (Z-A)</MenuItem>
+                      <MenuItem value="sem-asc">Semester (Asc)</MenuItem>
+                      <MenuItem value="sem-desc">Semester (Desc)</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Box>
+              </Box>
 
               <TabPanel value={tabIndex} index={0}>
-                <CourseGrid courses={allCourses} onEnroll={handleEnroll} />
+                <CourseGrid 
+                  courses={filteredAllCourses} 
+                  onEnroll={handleEnroll} 
+                  enrollments={enrollments} 
+                  onView={setViewCourse}
+                />
               </TabPanel>
 
               <TabPanel value={tabIndex} index={1}>
-                <EnrolledCourses enrollments={enrollments} onUnenroll={handleUnenroll} />
+                <EnrolledCourses 
+                  enrollments={filteredEnrollments} 
+                  onUnenroll={handleUnenroll} 
+                  onView={setViewCourse}
+                />
               </TabPanel>
             </Paper>
           )}
         </Stack>
       </Container>
+
+      <CourseContentDialog 
+        open={Boolean(viewCourse)} 
+        onClose={() => setViewCourse(null)} 
+        course={viewCourse} 
+      />
 
       <Dialog open={Boolean(enrollDialog)} onClose={() => setEnrollDialog(null)}>
         <DialogTitle>Confirm enrollment</DialogTitle>
